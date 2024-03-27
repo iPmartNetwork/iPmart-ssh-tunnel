@@ -18,7 +18,7 @@ apt update && apt upgrade -y
 ## 2. Download script on server
 
 ```bash
-wget http://github.com/ipmartnetwork/reverse_tunnel/raw/master/setup_reverse_tunnel.sh
+wget http://github.com/ipmartnetwork/reverse_ssh_tunnel/raw/master/setup_reverse_tunnel.sh
 ```
 
 ## 3.Chmod script
