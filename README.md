@@ -1,34 +1,79 @@
-# SSH Reverse Tunnel
+autossh-tunnel
+==============
+Setup and keep alive ssh tunnels to remote sites using autossh, screen.
 
-## Description
 
-Using autossh and reverse ssh tunneling to enable accessing your machines even if they are NAT'd or behind firewalls - automatically.
+Requirements
+------------
+- bash
+- autossh
+- screen
+- awk (optional)
+- sed (optional)
 
-How to use this:
 
-(Note this script assumes you are using Ubuntu)
+How it works
+------------
+Configure the sites you want to tunnel to in `~/.ssh/config`:
+`Host` declarations prefixed with 'autossh-' are 
+detected as *candidates* for tunnel sites, for example:
 
-## 1. Update server
+    Host autossh-HOSTNAME
+    Hostname HOSTNAME
+    User USER
+    RemoteForward 8022 localhost:22
+    IdentityFile ~/.ssh/autossh-id_rsa
 
-```bash
-apt update && apt upgrade -y
+`ssh-keygen.sh`:
+this is a helper script to generate an SSH key with empty passphrase.
+Beware, normally this is considered a *dangerous* thing to do.
+We sacrifice some security in favor of convenience,
+so that you can easily start ssh tunnels from cron,
+without having to reenter a passphrase after every reboot.
 
-```
+To make this less insecure,
+the public key will be configured on the remote site with these very restrictive ssh key authorization options:
 
-## 2. Download script on server
+    command="/bin/false",no-agent-forwarding,no-X11-forwarding,no-pty
 
-```bash
-wget https://raw.githubusercontent.com/iPmartNetwork/reverse_ssh_tunnel/main/setup_reverse_tunnel.sh
-```
+`ssh-copy-id.sh`:
+this is a helper script to install the dedicated SSH key in `~/.ssh/authorized_keys` on each of the detected tunnel sites.
 
-## 3.Chmod script
+`setup.sh`:
+helper script to walk you through the setup steps or print the details of the detected setup:
 
-```bash
-chmod +x ./setup_reverse_tunnel.sh
-```
+- Print the details of the detected setup, such as:
 
-## 4.Run script
+   - SSH key that will be used with `autossh`
+   - Detected tunnel sites in `~/.ssh/config`
+   - Confirmed tunnel sites (accepting the SSH key)
 
-```bash
-sudo ./setup_reverse_tunnel.sh
-```
+- Print the steps to complete the configuration.
+
+- Print tips how to test the configuration.
+
+`autossh.sh`:
+wrapper script to run `autossh` for each detected site in an independent `screen` session.
+It reuses an existing session or else it creates a new one.
+
+`crontab.sh`:
+helper script to add a line like this in `crontab` to periodically run `autossh.sh`:
+
+    0 * * * * $PWD/autossh.sh
+
+
+How to install
+--------------
+Simply run `./setup.sh` and follow the steps. This script does not
+do anything. It only tells you the configuration it detected and
+gives you the steps you need to follow to complete the configuration.
+
+
+How to uninstall
+----------------
+- Remove any `cron` jobs running `autossh.sh`
+- `./stop.sh` to stop any running `autossh` and `screen` instances
+- Login to each tunnel site and manually remove the script's SSH key
+  from `~/.ssh/authorized_keys`
+
+
