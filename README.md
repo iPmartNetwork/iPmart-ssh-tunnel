@@ -90,6 +90,10 @@ cd iPmart-ssh-tunnel
 ```
 
 ```
+sudo chmod -R 777 /root/iPmart-ssh-tunnel
+```
+
+```
 ./setup.sh
 ```
 
