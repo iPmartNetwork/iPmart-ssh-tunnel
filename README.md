@@ -11,8 +11,8 @@
 </p>
 
 
-==============
-Setup and keep alive ssh tunnels to remote sites using autossh, screen.
+
+<p align="center">Setup and keep alive ssh tunnels to remote sites using autossh, screen.</p>
 
 
 Requirements
