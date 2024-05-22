@@ -82,7 +82,7 @@ gives you the steps you need to follow to complete the configuration.
 
 
 ```
-git clone https://raw.githubusercontent.com/ipmartnetwork/iPmart-ssh-tunnel/main/setup.sh 
+git clone https://github.com/iPmartNetwork/iPmart-ssh-tunnel.git 
 ```
 
 ```
