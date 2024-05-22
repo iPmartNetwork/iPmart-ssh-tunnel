@@ -1,53 +1,92 @@
 #!/bin/bash
-#
-# Requires: autossh
-#
-# Establishes a persistent outgoing SSH connection with reverse port forwarding.
-# This allows connections to a remote (public) host to be forwarded to a host
-# behind a NAT in the local network.
-# Disconnections and re-connections will be gracefully handled by autossh. For this
-# to work you should setup automatic authentication using SSH keys.
-#
-# It does the following:
-# 1) Establishes an SSH connection to REMOTE_HOST;
-# 2) binds one or more REMOTE_PORTs in REMOTE_HOST;
-# 3) forwards incoming connections to LOCAL_PORTs in LOCAL_HOSTs
-#
-#
-# Note: In order to bind REMOTE_PORTs to all interfaces in REMOTE_HOST,
-#       you may need to add 'GatewayPorts yes' to the sshd configuration of REMOTE_HOST.
-#       Failing to do this may result in the tunnel refusing external connections.
-#       Also, LOCAL_HOST is relative to the host where you run this script from,
-#       and can either be `localhost` itself, or any other host accessible by it.
-#
-# Default configuration forwards REMOTE_HOST port 8880 to LOCAL_HOST port 80 and
-# REMOTE_HOST port 8443 to LOCAL_HOST port 443.
-#
-# Copyright (C) 2015-2019 Filipe Farinha - All Rights Reserved
-# Permission to copy and modify is granted under the GPLv3 license
-# Last revised 17/10/2019
+clear
+echo " "
+echo -e "\e[35m
+____________________________________________________________________________________
+        ____                             _     _                                     
+    ,   /    )                           /|   /                                  /   
+-------/____/---_--_----__---)__--_/_---/-| -/-----__--_/_-----------__---)__---/-__-
+  /   /        / /  ) /   ) /   ) /    /  | /    /___) /   | /| /  /   ) /   ) /(    
+_/___/________/_/__/_(___(_/_____(_ __/___|/____(___ _(_ __|/_|/__(___/_/_____/___\__
+\033[0m"
+if [ -z "$SUDO_USER" ]; then
+    echo "$0 must be called from sudo. Try: 'sudo ${0}'"
+    exit 1
+fi
 
-# The remote host that we connect to via SSH, and establish the listening remote port(s)
-REMOTE_HOST=remotehost.example.net
-REMOTE_HOST_SSH_PORT=22
-REMOTE_HOST_SSH_USER=myusername
+SCRIPT_LOCATION="/etc/network/if-up.d/reverse_ssh_tunnel"
 
+echo "Creating file in $SCRIPT_LOCATION"
+echo "Installing openssh-server and autossh"
+apt-get install openssh-server autossh
+echo "Randomly creating port numbers (edit these in the file to change if you want)"
 
-# Define reverse port forwards
-# Format: 'REMOTE_PORT:LOCAL_HOST:LOCAL_PORT' (where LOCAL_HOST can be actual localhost or any host acessible by localhost)
-PORTS=(
-     "8880:localhost:80"    # 8880 -> 80
-     "8443:localhost:443"   # 8443 -> 443
-    )
+PORT_NUMBER=$[ ( $RANDOM % 10000 )  + 10000 ]
+MONITORING_PORT_NUMBER=$[ ( $RANDOM % 10000 )  + 20000 ]
 
+echo "PORT_NUMBER: ${PORT_NUMBER}"
+echo "MONITORING_PORT_NUMBER: ${MONITORING_PORT_NUMBER}"
+echo "Enter servername or IP address for the middleman server"
+read MIDDLEMAN_SERVER
+echo "Enter username to use for logging into $MIDDLEMAN_SERVER:[$SUDO_USER]"
+read MIDDLEMAN_USERNAME
+if [[ -z $MIDDLEMAN_USERNAME ]]; then
+  MIDDLEMAN_USERNAME=$SUDO_USER
+fi
+echo "Checking to see if we can login using public key authentication: ssh $MIDDLEMAN_USERNAME@$MIDDLEMAN_SERVER (TODO, TO BE IMPLEMENTED!)"
+su $SUDO_USER -c "ssh $MIDDLEMAN_USERNAME@$MIDDLEMAN_SERVER \"echo I am in\""
 
-for PORT in ${PORTS[@]}
-do   
-  PORT_STR="$PORT_STR -R 0.0.0.0:$PORT"
-done
+echo "Checking to see if GatewayPorts is set on $MIDDLEMAN_SERVER"
+su $SUDO_USER -c "ssh $MIDDLEMAN_USERNAME@$MIDDLEMAN_SERVER \"cat /etc/ssh/sshd_config | grep 'GatewayPorts yes'\""
 
+echo "Do you want to upload your public key to the middleman and setup public key authentication? ([y]/n)"
+read COPY_KEY
 
-# Ignore early failed connections at boot
-export AUTOSSH_GATETIME=0
+if [ ! "${COPY_KEY}" = "n" ]; then
+  su $SUDO_USER -c "ssh-copy-id $MIDDLEMAN_USERNAME@$MIDDLEMAN_SERVER"
+fi
 
-autossh -4 -M 0 -o ServerAliveInterval=60 -o ExitOnForwardFailure=yes $PORT_STR -p$REMOTE_HOST_SSH_PORT $REMOTE_HOST_SSH_USER@$REMOTE_HOST
+echo "#!/bin/sh
+# ------------------------------
+# Added by setup_reverse_tunnel.sh
+# ------------------------------
+# See autossh and google for reverse ssh tunnels to see how this works
+
+# When this script runs it will allow you to ssh into this machine even if it is behind a firewall or has a NAT'd IP address. 
+# From any ssh capable machine you just type ssh -p $PORT_NUMBER $SUDO_USER@$MIDDLEMAN_SERVER
+
+# This is the username on your local server who has public key authentication setup at the middleman
+USER_TO_SSH_IN_AS=$MIDDLEMAN_USERNAME
+
+# This is the username and hostname/IP address for the middleman (internet accessible server)
+MIDDLEMAN_SERVER_AND_USERNAME=$MIDDLEMAN_USERNAME@$MIDDLEMAN_SERVER
+
+# Port that the middleman will listen on (use this value as the -p argument when sshing)
+PORT_MIDDLEMAN_WILL_LISTEN_ON=$PORT_NUMBER
+
+# Connection monitoring port, don't need to know this one
+AUTOSSH_PORT=$MONITORING_PORT_NUMBER
+
+# Ensures that autossh keeps trying to connect
+AUTOSSH_GATETIME=0
+su -c \"autossh -f -N -R *:\${PORT_MIDDLEMAN_WILL_LISTEN_ON}:localhost:22 \${MIDDLEMAN_SERVER_AND_USERNAME} -oLogLevel=error  -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no\" $SUDO_USER
+" > $SCRIPT_LOCATION
+
+echo "Making script executable"
+chmod +x $SCRIPT_LOCATION
+
+echo "Tunnel will now automatically run whenever a network connection comes up"
+echo "Do you want to start the tunnel now? [y]/n"
+read START_TUNNEL
+
+if [ ! "${START_TUNNEL}" = "n" ]; then
+  $SCRIPT_LOCATION
+fi
+
+echo "You might want to add the following to your .ssh/config (and then copy it to other machines) so that you can set this up easily:
+
+Host $HOSTNAME.tunnel
+  Port $PORT_NUMBER
+  HostName $MIDDLEMAN_SERVER
+  User $MIDDLEMAN_USERNAME
+"
