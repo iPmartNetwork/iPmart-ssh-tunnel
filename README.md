@@ -80,21 +80,28 @@ Simply run `./setup.sh` and follow the steps. This script does not
 do anything. It only tells you the configuration it detected and
 gives you the steps you need to follow to complete the configuration.
 
+```
+apt update -y 
+``` 
 
 ```
-git clone https://github.com/iPmartNetwork/iPmart-ssh-tunnel.git 
-```
-
-```
-cd iPmart-ssh-tunnel
-```
-
-```
-sudo chmod -R 777 /root/iPmart-ssh-tunnel
+apt install autossh -y  
 ```
 
 ```
-./setup.sh
+git clone https://github.com/iPmartNetwork/iPmart-ssh-tunnel.git  
+``` 
+
+```
+cd iPmart-ssh-tunnel 
+```
+
+```
+sudo chmod -R 777 /root/iPmart-ssh-tunnel 
+```
+
+```
+./setup.sh 
 ```
 
 
