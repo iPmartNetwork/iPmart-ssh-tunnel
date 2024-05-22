@@ -81,7 +81,18 @@ do anything. It only tells you the configuration it detected and
 gives you the steps you need to follow to complete the configuration.
 
 
-`git clone https://raw.githubusercontent.com/ipmartnetwork/iPmart-ssh-tunnel/main/setup.sh `
+```
+git clone [https://raw.githubusercontent.com/ipmartnetwork/iPmart-ssh-tunnel/main/setup.sh](https://github.com/iPmartNetwork/iPmart-ssh-tunnel.git) 
+```
+
+```
+cd iPmart-ssh-tunne
+```
+
+```
+./setup.sh
+```
+
 
 
 How to uninstall
