@@ -86,7 +86,7 @@ git clone https://github.com/iPmartNetwork/iPmart-ssh-tunnel.git
 ```
 
 ```
-cd iPmart-ssh-tunne
+cd iPmart-ssh-tunnel
 ```
 
 ```
